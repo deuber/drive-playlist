@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Drive Playlist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0}
+/* Layout: one column "trip sheet" — mile-marker timeline of episodes, big tap targets for use at a glance */
+:root{
+  --bg:#f3f4f1; --surface:#ffffff; --fg:#1d221f; --muted:#5d665f; --line:#d7dbd4;
+  --accent:#1a8a4a; --accent-ink:#ffffff; --road:#e6c229; --done:#9aa39b;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"Source Sans 3",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141816; --surface:#1d2320; --fg:#e8ece8; --muted:#9ba59e; --line:#2f3732;
+  --accent:#2fbf68; --accent-ink:#06120b; --road:#e6c229; --done:#5f6862; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141816; --surface:#1d2320; --fg:#e8ece8; --muted:#9ba59e; --line:#2f3732;
+  --accent:#2fbf68; --accent-ink:#06120b; --road:#e6c229; --done:#5f6862; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px;display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(40px,10vw,60px);line-height:.95;margin:0;text-wrap:balance;text-transform:uppercase;letter-spacing:.01em}
+.lede{color:var(--muted);margin:4px 0 0;max-width:60ch}
+.gauge{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.gauge div{background:var(--surface);padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.gauge b{font-family:var(--display);font-size:28px;line-height:1;font-variant-numeric:tabular-nums}
+.gauge span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+h2{font-family:var(--display);font-size:24px;text-transform:uppercase;letter-spacing:.03em;margin:0}
+.route{list-style:none;margin:0;padding:0;position:relative;display:flex;flex-direction:column;gap:14px}
+.route::before{content:"";position:absolute;left:21px;top:8px;bottom:8px;width:4px;background:repeating-linear-gradient(var(--road) 0 14px,transparent 14px 26px);opacity:.8}
+.stop{position:relative;display:grid;grid-template-columns:46px 1fr;gap:12px}
+.marker{width:46px;height:46px;border-radius:50%;background:var(--surface);border:2px solid var(--fg);display:grid;place-items:center;font-family:var(--display);font-size:22px;font-weight:700;z-index:1;font-variant-numeric:tabular-nums}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.meta{display:flex;flex-wrap:wrap;gap:6px 12px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.meta .clock{color:var(--fg)}
+.card h3{margin:0;font-size:19px;line-height:1.25;font-weight:600;text-wrap:balance}
+.card p{margin:0;color:var(--muted);font-size:15px}
+.tag{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:4px;border:1px solid var(--line)}
+.tag.top{border-color:var(--road);color:var(--fg);background:color-mix(in srgb,var(--road) 22%,transparent)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+.btn{display:inline-flex;align-items:center;gap:6px;min-height:42px;padding:0 14px;border-radius:21px;font-weight:600;font-size:15px;text-decoration:none;border:1px solid var(--line);color:var(--fg);background:transparent;cursor:pointer;font-family:var(--body)}
+.btn.play{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn:focus-visible{outline:3px solid var(--road);outline-offset:2px}
+.stop.saved .marker{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.alt .marker{border-style:dashed;font-size:16px}
+.checklist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.checklist li{display:grid;grid-template-columns:28px 1fr;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.checklist .n{font-family:var(--display);font-size:22px;color:var(--accent);line-height:1.1}
+.note{font-size:14px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Long drive</div>
+    <h1>Drive Playlist</h1>
+    <p class="lede">Nine stops, about 14 hours of audio, in listening order. Trim from the end if your drive runs shorter. Tap <b>Open in Spotify</b> to find each episode, save it, and download it before you leave.</p>
+  </header>
+
+  <div class="gauge" aria-label="Trip summary">
+    <div><b id="totalTime">13:51</b><span>Total audio</span></div>
+    <div><b id="savedCount">0/9</b><span>Downloaded</span></div>
+    <div><b id="leftTime">13:51</b><span>Still to get</span></div>
+  </div>
+  <div class="bar" aria-hidden="true"><i id="barFill"></i></div>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <h2>The route</h2>
+    <ol class="route" id="route"></ol>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <h2>Before you leave</h2>
+    <ol class="checklist">
+      <li><span class="n">1</span><span>Tap <b>Open in Spotify</b> on each stop, pick the matching episode, and tap the download arrow. Then mark it <b>Downloaded</b> here.</span></li>
+      <li><span class="n">2</span><span>In Spotify, check <b>Your Library → Downloaded</b> to confirm everything is there.</span></li>
+      <li><span class="n">3</span><span>Turn on Airplane Mode for a minute and play a few seconds of each one. If it plays, it's saved offline.</span></li>
+      <li><span class="n">4</span><span>If an episode isn't on Spotify, use the backup link (Apple Podcasts or the Lex Fridman site) and download it there.</span></li>
+    </ol>
+    <p class="note">Spotify lets you download podcast episodes on free and Premium accounts. Long episodes like the 4-hour AI show take a few hundred MB, so download on Wi-Fi. Durations are approximate; check them in the player.</p>
+  </section>
+</div>
+
+<script>
+const sp = q => "https://open.spotify.com/search/" + encodeURIComponent(q);
+const ap = q => "https://podcasts.apple.com/us/search?term=" + encodeURIComponent(q);
+const stops = [
+  {min:250, len:"4 hr 10 min", show:"Lex Fridman Podcast #490", title:"State of AI in 2026, with Nathan Lambert and Sebastian Raschka", desc:"AI models, coding agents, open-source models, China vs. the US, and where software development is heading.", top:true, cat:"AI", q:"Lex Fridman 490 Nathan Lambert Sebastian Raschka", backup:["lexfridman.com", "https://lexfridman.com/podcast/"]},
+  {min:84, len:"1 hr 24 min", show:"Freestyle & mogul skiing", title:"Jonny Moseley on the State of Freestyle & Mogul Skiing", desc:"The Olympic gold medalist on moguls, how the sport has changed, competition, and some good stories.", top:true, cat:"Skiing", q:"Jonny Moseley freestyle mogul skiing podcast", backup:["Apple Podcasts", ap("Jonny Moseley mogul skiing")]},
+  {min:62, len:"About 1 hr", show:"The Weekly Show with Jon Stewart", title:"Latest episode: Jon Stewart on this week's news", desc:"Jon Stewart's weekly podcast, where he and his guests take apart the latest from the Trump administration. Grab whichever episode is newest on Wednesday night so it's as current as possible.", cat:"Political comedy", q:"The Weekly Show with Jon Stewart", backup:["Apple Podcasts", ap("The Weekly Show with Jon Stewart")]},
+  {min:45, len:"About 45 min", show:"Jimmy Kimmel Live! Monologue (ABC Audio)", title:"This week's Kimmel monologues, back to back", desc:"The audio feed of Kimmel's nightly monologue, usually 10 to 15 minutes each. Download Monday through Wednesday's episodes and play them in a row. Pairs well right after Jon Stewart.", cat:"Political comedy", q:"Jimmy Kimmel Live! Monologue", backup:["Apple Podcasts", ap("Jimmy Kimmel Live Monologue")]},
+  {min:146, len:"2 hr 26 min", show:"Lex Fridman Podcast #475", title:"Demis Hassabis: Future of AI, Simulating Reality, Physics and Video Games", desc:"DeepMind, scientific discovery, the origins of life, and what AI might become.", top:true, cat:"AI · Science", q:"Lex Fridman 475 Demis Hassabis", backup:["lexfridman.com", "https://lexfridman.com/podcast/"]},
+  {min:60, len:"About 1 hr", show:"Stand-up albums on Spotify", title:"Stand-up hour: pick one comic's latest special", desc:"Spotify carries full stand-up albums under Music, not Podcasts. Tap a name, open their newest album, and download it. Ronny Chieng and Hasan Minhaj go hardest at politics; Taylor Tomlinson and Nate Bargatze are the biggest-selling tours right now; Sam Morril and Mark Normand are club favorites.", cat:"Stand-up", q:"stand-up comedy album", picks:["Ronny Chieng","Hasan Minhaj","Taylor Tomlinson","Nate Bargatze","Sam Morril","Mark Normand"], backup:["Apple Music", "https://music.apple.com/us/search?term=stand-up%20comedy"]},
+  {min:56, len:"56 min", show:"Off the Clock", title:"Congresswoman Susie Lee", desc:"A skier and mountain biker on fitting outdoor sports into a demanding career, Nevada roots, and public lands.", cat:"Ski · MTB", q:"Off the Clock Susie Lee", backup:["Apple Podcasts", ap("Off the Clock Susie Lee")]},
+  {min:55, len:"55 min", show:"Mountain-town sports", title:"Ryan Sederquist on Nordic Skiing and Mountain-Town Sports Journalism", desc:"Skiing, sports journalism, and life in a mountain town.", cat:"Skiing", q:"Ryan Sederquist Nordic skiing podcast", backup:["Apple Podcasts", ap("Ryan Sederquist")]},
+  {min:73, len:"1 hr 13 min", show:"Vital MTB", title:"R.I.P. Enduro World Cups: What's Next?", desc:"The Vital MTB crew on the end of Enduro World Cup racing in 2027, why, and what comes next.", cat:"MTB", q:"Vital MTB Enduro World Cups What's Next", backup:["Apple Podcasts", ap("Vital MTB Enduro World Cups")]},
+];
+const alt = {len:"Spare", show:"Lex Fridman Podcast", title:"Sean Carroll: The Nature of the Universe, Life, and Intelligence", desc:"Physics, the universe, consciousness, and intelligence. Keep it as a spare if there's a delay or you skip something.", cat:"Science", q:"Lex Fridman Sean Carroll Nature of the Universe Life Intelligence", backup:["lexfridman.com","https://lexfridman.com/podcast/"]};
+
+alt.isAlt = true;
+const all = [...stops, alt];
+const key = s => s.q;              // keyed by episode, so reordering never shifts marks
+let saved = {};
+try { saved = JSON.parse(localStorage.getItem("driveSaved") || "{}"); } catch(e) {}
+const fmt = m => Math.floor(m/60) + ":" + String(m%60).padStart(2,"0");
+const route = document.getElementById("route");
+
+function paint(li, on){
+  li.classList.toggle("saved", on);
+  const b = li.querySelector("button");
+  b.setAttribute("aria-pressed", on); b.textContent = on ? "\u2713 Downloaded" : "Mark downloaded";
+}
+
+let clock = 0;
+all.forEach((s, i) => {
+  const li = document.createElement("li");
+  li.className = "stop" + (s.isAlt ? " alt" : "");
+  li.dataset.k = key(s);
+  const at = s.isAlt ? "" : `<span class="clock">Starts at ${fmt(clock)}</span>`;
+  li.innerHTML = `
+    <div class="marker">${s.isAlt ? "+" : i+1}</div>
+    <div class="card">
+      <div class="meta">${at}<span>${s.len}</span><span>${s.show}</span></div>
+      <h3>${s.title}</h3>
+      <p>${s.desc}</p>
+      <div class="meta"><span class="tag">${s.cat}</span>${s.top ? '<span class="tag top">Top pick</span>' : ""}</div>
+      ${s.picks ? `<div class="actions">${s.picks.map(p => `<a class="btn play" href="${sp(p)}" target="_blank" rel="noopener">\u25b6 ${p}</a>`).join("")}</div>` : ""}
+      <div class="actions">
+        ${s.picks ? "" : `<a class="btn play" href="${sp(s.q)}" target="_blank" rel="noopener">\u25b6 Open in Spotify</a>`}
+        <button class="btn" id="dl-${i}" type="button" aria-pressed="false">Mark downloaded</button>
+        <a class="btn" href="${s.backup[1]}" target="_blank" rel="noopener">${s.backup[0]}</a>
+      </div>
+    </div>`;
+  li.querySelector("button").addEventListener("click", () => {
+    const k = key(s);
+    saved[k] = !saved[k];
+    paint(li, saved[k]);
+    update();
+    try { localStorage.setItem("driveSaved", JSON.stringify(saved)); } catch(e) {}
+    });
+  if (!s.isAlt) clock += s.min;
+  route.appendChild(li);
+});
+
+function renderAll(){
+  route.querySelectorAll(".stop").forEach(li => paint(li, !!saved[li.dataset.k]));
+  update();
+}
+function update(){
+  const n = stops.filter(s => saved[key(s)]).length;
+  const left = stops.reduce((t,s) => t + (saved[key(s)] ? 0 : s.min), 0);
+  const N = stops.length;
+  document.getElementById("totalTime").textContent = fmt(stops.reduce((t,s) => t + s.min, 0));
+  document.getElementById("savedCount").textContent = n + "/" + N;
+  document.getElementById("leftTime").textContent = fmt(left);
+  document.getElementById("barFill").style.width = (n/N*100) + "%";
+}
+renderAll();
+
+</script>
+</body>
+</html>
